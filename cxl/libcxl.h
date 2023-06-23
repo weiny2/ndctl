@@ -72,6 +72,7 @@ int cxl_memdev_get_minor(struct cxl_memdev *memdev);
 struct cxl_ctx *cxl_memdev_get_ctx(struct cxl_memdev *memdev);
 unsigned long long cxl_memdev_get_pmem_size(struct cxl_memdev *memdev);
 unsigned long long cxl_memdev_get_ram_size(struct cxl_memdev *memdev);
+unsigned long long cxl_memdev_get_dc_size(struct cxl_memdev *memdev, int index);
 const char *cxl_memdev_get_firmware_verison(struct cxl_memdev *memdev);
 bool cxl_memdev_fw_update_in_progress(struct cxl_memdev *memdev);
 size_t cxl_memdev_fw_update_get_remaining(struct cxl_memdev *memdev);
@@ -185,11 +186,20 @@ unsigned long long cxl_decoder_get_dpa_size(struct cxl_decoder *decoder);
 unsigned long long
 cxl_decoder_get_max_available_extent(struct cxl_decoder *decoder);
 
+#define NUM_DC_REGIONS 8
 enum cxl_decoder_mode {
 	CXL_DECODER_MODE_NONE,
-	CXL_DECODER_MODE_MIXED,
-	CXL_DECODER_MODE_PMEM,
 	CXL_DECODER_MODE_RAM,
+	CXL_DECODER_MODE_PMEM,
+	CXL_DECODER_MODE_DC0,
+	CXL_DECODER_MODE_DC1,
+	CXL_DECODER_MODE_DC2,
+	CXL_DECODER_MODE_DC3,
+	CXL_DECODER_MODE_DC4,
+	CXL_DECODER_MODE_DC5,
+	CXL_DECODER_MODE_DC6,
+	CXL_DECODER_MODE_DC7,
+	CXL_DECODER_MODE_MIXED,
 };
 
 static inline const char *cxl_decoder_mode_name(enum cxl_decoder_mode mode)
@@ -199,9 +209,17 @@ static inline const char *cxl_decoder_mode_name(enum cxl_decoder_mode mode)
 		[CXL_DECODER_MODE_MIXED] = "mixed",
 		[CXL_DECODER_MODE_PMEM] = "pmem",
 		[CXL_DECODER_MODE_RAM] = "ram",
+		[CXL_DECODER_MODE_DC0] = "dc0",
+		[CXL_DECODER_MODE_DC1] = "dc1",
+		[CXL_DECODER_MODE_DC2] = "dc2",
+		[CXL_DECODER_MODE_DC3] = "dc3",
+		[CXL_DECODER_MODE_DC4] = "dc4",
+		[CXL_DECODER_MODE_DC5] = "dc5",
+		[CXL_DECODER_MODE_DC6] = "dc6",
+		[CXL_DECODER_MODE_DC7] = "dc7",
 	};
 
-	if (mode < CXL_DECODER_MODE_NONE || mode > CXL_DECODER_MODE_RAM)
+	if (mode < CXL_DECODER_MODE_NONE || mode > CXL_DECODER_MODE_DC7)
 		mode = CXL_DECODER_MODE_NONE;
 	return names[mode];
 }
@@ -215,9 +233,31 @@ cxl_decoder_mode_from_ident(const char *ident)
 		return CXL_DECODER_MODE_RAM;
 	else if (strcmp(ident, "pmem") == 0)
 		return CXL_DECODER_MODE_PMEM;
+	else if (strcmp(ident, "dc0") == 0)
+		return CXL_DECODER_MODE_DC0;
+	else if (strcmp(ident, "dc1") == 0)
+		return CXL_DECODER_MODE_DC1;
+	else if (strcmp(ident, "dc2") == 0)
+		return CXL_DECODER_MODE_DC2;
+	else if (strcmp(ident, "dc3") == 0)
+		return CXL_DECODER_MODE_DC3;
+	else if (strcmp(ident, "dc4") == 0)
+		return CXL_DECODER_MODE_DC4;
+	else if (strcmp(ident, "dc5") == 0)
+		return CXL_DECODER_MODE_DC5;
+	else if (strcmp(ident, "dc6") == 0)
+		return CXL_DECODER_MODE_DC6;
+	else if (strcmp(ident, "dc7") == 0)
+		return CXL_DECODER_MODE_DC7;
 	return CXL_DECODER_MODE_NONE;
 }
 
+static inline bool cxl_decoder_mode_is_dc(enum cxl_decoder_mode mode)
+{
+	return (mode >= CXL_DECODER_MODE_DC0 && mode <= CXL_DECODER_MODE_DC7);
+}
+
+bool cxl_decoder_mode_is_dc(enum cxl_decoder_mode mode);
 enum cxl_decoder_mode cxl_decoder_get_mode(struct cxl_decoder *decoder);
 int cxl_decoder_set_mode(struct cxl_decoder *decoder,
 			 enum cxl_decoder_mode mode);
@@ -242,6 +282,7 @@ enum cxl_decoder_target_type {
 enum cxl_decoder_target_type
 cxl_decoder_get_target_type(struct cxl_decoder *decoder);
 bool cxl_decoder_is_pmem_capable(struct cxl_decoder *decoder);
+bool cxl_decoder_is_dc_capable(struct cxl_decoder *decoder, int index);
 bool cxl_decoder_is_volatile_capable(struct cxl_decoder *decoder);
 bool cxl_decoder_is_mem_capable(struct cxl_decoder *decoder);
 bool cxl_decoder_is_accelmem_capable(struct cxl_decoder *decoder);
@@ -252,6 +293,8 @@ unsigned int cxl_decoder_get_interleave_ways(struct cxl_decoder *decoder);
 struct cxl_region *cxl_decoder_get_region(struct cxl_decoder *decoder);
 struct cxl_region *cxl_decoder_create_pmem_region(struct cxl_decoder *decoder);
 struct cxl_region *cxl_decoder_create_ram_region(struct cxl_decoder *decoder);
+struct cxl_region *cxl_decoder_create_dc_region(struct cxl_decoder *decoder,
+						enum cxl_decoder_mode mode);
 struct cxl_decoder *cxl_decoder_get_by_name(struct cxl_ctx *ctx,
 					    const char *ident);
 struct cxl_memdev *cxl_decoder_get_memdev(struct cxl_decoder *decoder);
