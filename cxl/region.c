@@ -78,7 +78,7 @@ OPT_INTEGER('w', "ways", &param.ways, \
 OPT_INTEGER('g', "granularity", &param.granularity,  \
 	    "granularity of the interleave set"), \
 OPT_STRING('t', "type", &param.type, \
-	   "region type", "region type - 'pmem' or 'ram'"), \
+	   "region type", "region type - 'pmem', 'ram', 'dcX'"), \
 OPT_STRING('U', "uuid", &param.uuid, \
 	   "region uuid", "uuid for the new region (default: autogenerate)"), \
 OPT_BOOLEAN('m', "memdevs", &param.memdevs, \
@@ -400,9 +400,22 @@ static int parse_region_options(int argc, const char **argv,
 	}
 }
 
+static int dc_mode_to_region_index(enum cxl_decoder_mode mode)
+{
+	int index = 0;
+
+	for (unsigned int i = CXL_DECODER_MODE_DC0; i <= CXL_DECODER_MODE_DC7; i++) {
+		if (mode == i)
+			return index;
+		index++;
+	}
+
+	return -EINVAL;
+}
+
 static void collect_minsize(struct cxl_ctx *ctx, struct parsed_params *p)
 {
-	int i;
+	int i, index;
 
 	for (i = 0; i < p->ways; i++) {
 		struct json_object *jobj =
@@ -416,6 +429,10 @@ static void collect_minsize(struct cxl_ctx *ctx, struct parsed_params *p)
 			break;
 		case CXL_DECODER_MODE_PMEM:
 			size = cxl_memdev_get_pmem_size(memdev);
+			break;
+		case CXL_DECODER_MODE_DC0 ... CXL_DECODER_MODE_DC7:
+			index =  dc_mode_to_region_index(p->mode);
+			size = cxl_memdev_get_dc_size(memdev, index);
 			break;
 		default:
 			/* Shouldn't ever get here */ ;
@@ -473,6 +490,7 @@ static int validate_decoder(struct cxl_decoder *decoder,
 			    struct parsed_params *p)
 {
 	const char *devname = cxl_decoder_get_devname(decoder);
+	int index;
 	int rc;
 
 	switch(p->mode) {
@@ -485,6 +503,13 @@ static int validate_decoder(struct cxl_decoder *decoder,
 	case CXL_DECODER_MODE_PMEM:
 		if (!cxl_decoder_is_pmem_capable(decoder)) {
 			log_err(&rl, "%s is not pmem capable\n", devname);
+			return -EINVAL;
+		}
+		break;
+	case CXL_DECODER_MODE_DC0 ... CXL_DECODER_MODE_DC7:
+		index =  dc_mode_to_region_index(p->mode);
+		if (!cxl_decoder_is_dc_capable(decoder, index)) {
+			log_err(&rl, "%s is not dc%d capable\n", devname, index);
 			return -EINVAL;
 		}
 		break;
@@ -502,11 +527,24 @@ static int validate_decoder(struct cxl_decoder *decoder,
 	return 0;
 }
 
+static enum cxl_decoder_mode dc_region_index_to_mode(int index)
+{
+	return (CXL_DECODER_MODE_DC0 + index);
+}
+
 static void set_type_from_decoder(struct cxl_ctx *ctx, struct parsed_params *p)
 {
 	/* if param.type was explicitly specified, nothing to do here */
 	if (param.type)
 		return;
+
+	/* Only chose DC if it is the only type available */
+	for (int index = 0; index < MAX_NUM_DC_REGIONS; index++) {
+		if (cxl_decoder_is_dc_capable(p->root_decoder, index)) {
+			p->mode = dc_region_index_to_mode(index);
+			break;
+		}
+	}
 
 	/*
 	 * default to pmem if both types are set, otherwise the single
@@ -694,6 +732,13 @@ static int create_region(struct cxl_ctx *ctx, int *count,
 		}
 	} else if (p->mode == CXL_DECODER_MODE_RAM) {
 		region = cxl_decoder_create_ram_region(p->root_decoder);
+		if (!region) {
+			log_err(&rl, "failed to create region under %s\n",
+				param.root_decoder);
+			return -ENXIO;
+		}
+	} else if (cxl_decoder_mode_is_dc(p->mode)) {
+		region = cxl_decoder_create_dc_region(p->root_decoder, p->mode);
 		if (!region) {
 			log_err(&rl, "failed to create region under %s\n",
 				param.root_decoder);

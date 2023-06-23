@@ -754,10 +754,12 @@ err_free:
 	return jpoison;
 }
 
+#define DC_SIZE_NAME_LEN 64
 struct json_object *util_cxl_memdev_to_json(struct cxl_memdev *memdev,
 		unsigned long flags)
 {
 	const char *devname = cxl_memdev_get_devname(memdev);
+	char size_name[DC_SIZE_NAME_LEN];
 	struct json_object *jdev, *jobj;
 	unsigned long long serial, size;
 	const char *fw_version;
@@ -800,6 +802,17 @@ struct json_object *util_cxl_memdev_to_json(struct cxl_memdev *memdev,
 		}
 	}
 
+	for (int index; index < MAX_NUM_DC_REGIONS; index++) {
+		size = cxl_memdev_get_dc_size(memdev, index);
+		if (size) {
+			jobj = util_json_object_size(size, flags);
+			if (jobj) {
+				sprintf(size_name, "dc%d_size", index);
+				json_object_object_add(jdev,
+						       size_name, jobj);
+			}
+		}
+	}
 	if (flags & UTIL_JSON_HEALTH) {
 		jobj = util_cxl_memdev_health_to_json(memdev, flags);
 		if (jobj)
@@ -948,11 +961,13 @@ struct json_object *util_cxl_bus_to_json(struct cxl_bus *bus,
 	return jbus;
 }
 
+#define DC_CAPABILITY_NAME_LEN 16
 struct json_object *util_cxl_decoder_to_json(struct cxl_decoder *decoder,
 					     unsigned long flags)
 {
 	const char *devname = cxl_decoder_get_devname(decoder);
 	struct cxl_port *port = cxl_decoder_get_port(decoder);
+	char dc_capable_name[DC_CAPABILITY_NAME_LEN];
 	struct json_object *jdecoder, *jobj;
 	struct cxl_region *region;
 	u64 val, size;
@@ -1058,6 +1073,17 @@ struct json_object *util_cxl_decoder_to_json(struct cxl_decoder *decoder,
 			if (jobj)
 				json_object_object_add(
 					jdecoder, "volatile_capable", jobj);
+		}
+		for (int index = 0; index < MAX_NUM_DC_REGIONS; index++) {
+			if (cxl_decoder_is_dc_capable(decoder, index)) {
+				jobj = json_object_new_boolean(true);
+				if (jobj) {
+					sprintf(dc_capable_name, "dc%d_capable", index);
+					json_object_object_add(jdecoder,
+							       dc_capable_name,
+							       jobj);
+				}
+			}
 		}
 	}
 

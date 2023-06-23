@@ -12,7 +12,6 @@
 #include <util/bitmap.h>
 
 #define CXL_EXPORT __attribute__ ((visibility("default")))
-
 struct cxl_pmem {
 	int id;
 	void *dev_buf;
@@ -47,6 +46,9 @@ struct cxl_memdev {
 	struct list_node list;
 	unsigned long long pmem_size;
 	unsigned long long ram_size;
+	unsigned long long dc_size[MAX_NUM_DC_REGIONS];
+	unsigned long long dc_qos_class[MAX_NUM_DC_REGIONS];
+	int dc_partition_count;
 	int ram_qos_class;
 	int pmem_qos_class;
 	int payload_max;
@@ -111,6 +113,7 @@ struct cxl_endpoint {
 	struct cxl_memdev *memdev;
 };
 
+
 struct cxl_target {
 	struct list_node list;
 	struct cxl_decoder *decoder;
@@ -140,6 +143,7 @@ struct cxl_decoder {
 	bool pmem_capable;
 	bool volatile_capable;
 	bool mem_capable;
+	bool dc_capable[MAX_NUM_DC_REGIONS];
 	bool accelmem_capable;
 	bool locked;
 	enum cxl_decoder_target_type target_type;
