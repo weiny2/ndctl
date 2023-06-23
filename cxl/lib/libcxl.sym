@@ -292,4 +292,7 @@ global:
 LIBCXL_9 {
 global:
 	cxl_region_get_region_mode;
+	cxl_memdev_get_dc_size;
+	cxl_decoder_is_dc_capable;
+	cxl_decoder_create_dc_region;
 } LIBECXL_8;
