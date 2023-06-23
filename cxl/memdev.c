@@ -192,8 +192,24 @@ static int __reserve_dpa(struct cxl_memdev *memdev,
 
 	if (mode == CXL_DECODER_MODE_RAM)
 		avail_dpa = cxl_memdev_get_ram_size(memdev);
-	else
+	else if (mode == CXL_DECODER_MODE_PMEM)
 		avail_dpa = cxl_memdev_get_pmem_size(memdev);
+	else if (mode == CXL_DECODER_MODE_DC0)
+		avail_dpa = cxl_memdev_get_dc_size(memdev, 0);
+	else if (mode == CXL_DECODER_MODE_DC1)
+		avail_dpa = cxl_memdev_get_dc_size(memdev, 1);
+	else if (mode == CXL_DECODER_MODE_DC2)
+		avail_dpa = cxl_memdev_get_dc_size(memdev, 2);
+	else if (mode == CXL_DECODER_MODE_DC3)
+		avail_dpa = cxl_memdev_get_dc_size(memdev, 3);
+	else if (mode == CXL_DECODER_MODE_DC4)
+		avail_dpa = cxl_memdev_get_dc_size(memdev, 4);
+	else if (mode == CXL_DECODER_MODE_DC5)
+		avail_dpa = cxl_memdev_get_dc_size(memdev, 5);
+	else if (mode == CXL_DECODER_MODE_DC6)
+		avail_dpa = cxl_memdev_get_dc_size(memdev, 6);
+	else
+		avail_dpa = cxl_memdev_get_dc_size(memdev, 7);
 
 	cxl_decoder_foreach(port, decoder) {
 		size = cxl_decoder_get_dpa_size(decoder);
