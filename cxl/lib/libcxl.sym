@@ -19,6 +19,7 @@ global:
 	cxl_memdev_get_ctx;
 	cxl_memdev_get_pmem_size;
 	cxl_memdev_get_ram_size;
+	cxl_memdev_get_dc_size;
 	cxl_memdev_get_firmware_verison;
 	cxl_cmd_get_devname;
 	cxl_cmd_new_raw;
@@ -247,6 +248,8 @@ LIBCXL_5 {
 global:
 	cxl_region_get_mode;
 	cxl_decoder_create_ram_region;
+	cxl_decoder_is_dc_capable;
+	cxl_decoder_create_dc_region;
 	cxl_region_get_daxctl_region;
 	cxl_port_get_parent_dport;
 } LIBCXL_4;
