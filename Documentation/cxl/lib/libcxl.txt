@@ -68,6 +68,7 @@ int cxl_memdev_get_major(struct cxl_memdev *memdev);
 int cxl_memdev_get_minor(struct cxl_memdev *memdev);
 unsigned long long cxl_memdev_get_pmem_size(struct cxl_memdev *memdev);
 unsigned long long cxl_memdev_get_ram_size(struct cxl_memdev *memdev);
+unsigned long long cxl_memdev_get_dc_size(struct cxl_memdev *memdev, enum cxl_decoder_mode mode);
 const char *cxl_memdev_get_firmware_version(struct cxl_memdev *memdev);
 size_t cxl_memdev_get_label_size(struct cxl_memdev *memdev);
 int cxl_memdev_nvdimm_bridge_active(struct cxl_memdev *memdev);
@@ -422,11 +423,23 @@ enum cxl_decoder_mode {
 	CXL_DECODER_MODE_MIXED,
 	CXL_DECODER_MODE_PMEM,
 	CXL_DECODER_MODE_RAM,
+	CXL_DECODER_MODE_DC0,
+	CXL_DECODER_MODE_DC1,
+	CXL_DECODER_MODE_DC2,
+	CXL_DECODER_MODE_DC3,
+	CXL_DECODER_MODE_DC4,
+	CXL_DECODER_MODE_DC5,
+	CXL_DECODER_MODE_DC6,
+	CXL_DECODER_MODE_DC7,
 };
 enum cxl_decoder_mode cxl_decoder_get_mode(struct cxl_decoder *decoder);
+const char *cxl_decoder_mode_name(enum cxl_decoder_mode mode);
+enum cxl_decoder_mode cxl_decoder_mode_from_ident(const char *ident);
+bool cxl_decoder_mode_is_dc(enum cxl_decoder_mode mode);
 int cxl_decoder_set_mode(struct cxl_decoder *decoder, enum cxl_decoder_mode mode);
 
 bool cxl_decoder_is_pmem_capable(struct cxl_decoder *decoder);
+bool cxl_decoder_is_dc_capable(struct cxl_decoder *decoder, enum cxl_decoder_mode mode);
 bool cxl_decoder_is_volatile_capable(struct cxl_decoder *decoder);
 bool cxl_decoder_is_mem_capable(struct cxl_decoder *decoder);
 bool cxl_decoder_is_accelmem_capable(struct cxl_decoder *decoder);
@@ -558,6 +571,7 @@ enum cxl_region_mode {
 	CXL_REGION_MODE_MIXED = CXL_DECODER_MODE_MIXED,
 	CXL_REGION_MODE_PMEM = CXL_DECODER_MODE_PMEM,
 	CXL_REGION_MODE_RAM = CXL_DECODER_MODE_RAM,
+	CXL_REGION_MODE_DC,
 };
 const char *cxl_region_mode_name(enum cxl_region_mode mode);
 enum cxl_region_mode cxl_region_mode_from_ident(const char *ident);
@@ -615,7 +629,8 @@ cxl_region_get_daxctl_region() returns an 'struct daxctl_region *' that
 can be used with other libdaxctl APIs.
 
 Regions now have a mode distinct from decoders.  cxl_region_get_mode() is
-deprecated in favor of cxl_region_get_region_mode().
+deprecated in favor of cxl_region_get_region_mode().  Dynamic capacity regions
+require the use of cxl_region_get_region_mode().
 
 include::../../copyright.txt[]
 
