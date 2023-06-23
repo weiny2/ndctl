@@ -1267,7 +1267,6 @@ static void *add_cxl_memdev(void *parent, int id, const char *cxlmem_base)
 	char buf[SYSFS_ATTR_SIZE];
 	struct stat st;
 	char *host;
-
 	if (!path)
 		return NULL;
 	dbg(ctx, "%s: base: \'%s\'\n", devname, cxlmem_base);
@@ -1303,6 +1302,19 @@ static void *add_cxl_memdev(void *parent, int id, const char *cxlmem_base)
 		memdev->ram_qos_class = CXL_QOS_CLASS_NONE;
 	else
 		memdev->ram_qos_class = atoi(buf);
+
+	sprintf(path, "%s/dc/region_count", cxlmem_base);
+	if (sysfs_read_attr(ctx, path, buf) < 0)
+		memdev->dc_region_count = 0;
+	else
+		memdev->dc_region_count = strtoull(buf, NULL, 0);
+
+	for (int region = 0; region < memdev->dc_region_count; region++) {
+		sprintf(path, "%s/dc/region%d_size", cxlmem_base, region);
+		if (sysfs_read_attr(ctx, path, buf) < 0)
+			goto err_read;
+		memdev->dc_size[region] = strtoull(buf, NULL, 0);
+	}
 
 	sprintf(path, "%s/payload_max", cxlmem_base);
 	if (sysfs_read_attr(ctx, path, buf) == 0) {
@@ -1538,6 +1550,14 @@ CXL_EXPORT int cxl_memdev_get_pmem_qos_class(struct cxl_memdev *memdev)
 CXL_EXPORT int cxl_memdev_get_ram_qos_class(struct cxl_memdev *memdev)
 {
 	return memdev->ram_qos_class;
+}
+
+CXL_EXPORT unsigned long long cxl_memdev_get_dc_size(struct cxl_memdev *memdev, int index)
+{
+	if (index >= 0 && index < NUM_DC_REGIONS)
+		return memdev->dc_size[index];
+
+	return 0;
 }
 
 CXL_EXPORT const char *cxl_memdev_get_firmware_verison(struct cxl_memdev *memdev)
@@ -2222,6 +2242,22 @@ static void *add_cxl_decoder(void *parent, int id, const char *cxldecoder_base)
 			decoder->mode = CXL_DECODER_MODE_RAM;
 		else if (strcmp(buf, "pmem") == 0)
 			decoder->mode = CXL_DECODER_MODE_PMEM;
+		else if (strcmp(buf, "dc0") == 0)
+			decoder->mode = CXL_DECODER_MODE_DC0;
+		else if (strcmp(buf, "dc1") == 0)
+			decoder->mode = CXL_DECODER_MODE_DC1;
+		else if (strcmp(buf, "dc2") == 0)
+			decoder->mode = CXL_DECODER_MODE_DC2;
+		else if (strcmp(buf, "dc3") == 0)
+			decoder->mode = CXL_DECODER_MODE_DC3;
+		else if (strcmp(buf, "dc4") == 0)
+			decoder->mode = CXL_DECODER_MODE_DC4;
+		else if (strcmp(buf, "dc5") == 0)
+			decoder->mode = CXL_DECODER_MODE_DC5;
+		else if (strcmp(buf, "dc6") == 0)
+			decoder->mode = CXL_DECODER_MODE_DC6;
+		else if (strcmp(buf, "dc7") == 0)
+			decoder->mode = CXL_DECODER_MODE_DC7;
 		else if (strcmp(buf, "mixed") == 0)
 			decoder->mode = CXL_DECODER_MODE_MIXED;
 		else if (strcmp(buf, "none") == 0)
@@ -2265,6 +2301,14 @@ static void *add_cxl_decoder(void *parent, int id, const char *cxldecoder_base)
 	case CXL_PORT_SWITCH:
 		decoder->pmem_capable = true;
 		decoder->volatile_capable = true;
+		decoder->dc_capable[0] = true;
+		decoder->dc_capable[1] = true;
+		decoder->dc_capable[2] = true;
+		decoder->dc_capable[3] = true;
+		decoder->dc_capable[4] = true;
+		decoder->dc_capable[5] = true;
+		decoder->dc_capable[6] = true;
+		decoder->dc_capable[7] = true;
 		decoder->mem_capable = true;
 		decoder->accelmem_capable = true;
 		sprintf(path, "%s/locked", cxldecoder_base);
@@ -2288,6 +2332,14 @@ static void *add_cxl_decoder(void *parent, int id, const char *cxldecoder_base)
 			{ "cap_type2", &decoder->accelmem_capable },
 			{ "cap_type3", &decoder->mem_capable },
 			{ "cap_ram", &decoder->volatile_capable },
+			{ "cap_ram", &decoder->dc_capable[0] },
+			{ "cap_ram", &decoder->dc_capable[1] },
+			{ "cap_ram", &decoder->dc_capable[2] },
+			{ "cap_ram", &decoder->dc_capable[3] },
+			{ "cap_ram", &decoder->dc_capable[4] },
+			{ "cap_ram", &decoder->dc_capable[5] },
+			{ "cap_ram", &decoder->dc_capable[6] },
+			{ "cap_ram", &decoder->dc_capable[7] },
 			{ "cap_pmem", &decoder->pmem_capable },
 			{ "locked", &decoder->locked },
 		};
@@ -2539,6 +2591,30 @@ CXL_EXPORT int cxl_decoder_set_mode(struct cxl_decoder *decoder,
 	case CXL_DECODER_MODE_RAM:
 		sprintf(buf, "ram");
 		break;
+	case CXL_DECODER_MODE_DC0:
+		sprintf(buf, "dc0");
+		break;
+	case CXL_DECODER_MODE_DC1:
+		sprintf(buf, "dc1");
+		break;
+	case CXL_DECODER_MODE_DC2:
+		sprintf(buf, "dc2");
+		break;
+	case CXL_DECODER_MODE_DC3:
+		sprintf(buf, "dc3");
+		break;
+	case CXL_DECODER_MODE_DC4:
+		sprintf(buf, "dc4");
+		break;
+	case CXL_DECODER_MODE_DC5:
+		sprintf(buf, "dc5");
+		break;
+	case CXL_DECODER_MODE_DC6:
+		sprintf(buf, "dc6");
+		break;
+	case CXL_DECODER_MODE_DC7:
+		sprintf(buf, "dc7");
+		break;
 	default:
 		err(ctx, "%s: unsupported mode: %d\n",
 		    cxl_decoder_get_devname(decoder), mode);
@@ -2593,6 +2669,14 @@ CXL_EXPORT bool cxl_decoder_is_volatile_capable(struct cxl_decoder *decoder)
 CXL_EXPORT bool cxl_decoder_is_mem_capable(struct cxl_decoder *decoder)
 {
 	return decoder->mem_capable;
+}
+
+CXL_EXPORT bool cxl_decoder_is_dc_capable(struct cxl_decoder *decoder, int index)
+{
+	if (index >= 0 && index < NUM_DC_REGIONS)
+		return decoder->dc_capable[index];
+
+	return 0;
 }
 
 CXL_EXPORT bool cxl_decoder_is_accelmem_capable(struct cxl_decoder *decoder)
@@ -2664,6 +2748,8 @@ static struct cxl_region *cxl_decoder_create_region(struct cxl_decoder *decoder,
 		sprintf(path, "%s/create_pmem_region", decoder->dev_path);
 	else if (mode == CXL_DECODER_MODE_RAM)
 		sprintf(path, "%s/create_ram_region", decoder->dev_path);
+	else if (cxl_decoder_mode_is_dc(mode))
+		sprintf(path, "%s/create_dc_region", decoder->dev_path);
 
 	rc = sysfs_read_attr(ctx, path, buf);
 	if (rc < 0) {
@@ -2713,6 +2799,13 @@ CXL_EXPORT struct cxl_region *
 cxl_decoder_create_ram_region(struct cxl_decoder *decoder)
 {
 	return cxl_decoder_create_region(decoder, CXL_DECODER_MODE_RAM);
+}
+
+CXL_EXPORT struct cxl_region *
+cxl_decoder_create_dc_region(struct cxl_decoder *decoder,
+			     enum cxl_decoder_mode mode)
+{
+	return cxl_decoder_create_region(decoder, mode);
 }
 
 CXL_EXPORT int cxl_decoder_get_nr_targets(struct cxl_decoder *decoder)
