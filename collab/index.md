@@ -41,6 +41,7 @@ layout: page
 * [RCH Error handling](https://patchwork.kernel.org/project/cxl/list/?series=761698): fixes requested
 * QTG enabling
   * [ACPI HMAT Generic Port support](https://patchwork.kernel.org/project/cxl/list/?series=759643): awaiting merge
+    * Acked by Rafael going through CXL tree.  [https://lore.kernel.org/linux-cxl/CAJZ5v0h_HMAoAj3v0MLEt3pK2Kz8VQOKuc2hweUAyLheyqUQ1Q@mail.gmail.com/T/#m75549397ac32815ee7fbaad5de711d4ed1b9103d]
   * [Surface QTG ID info](https://patchwork.kernel.org/project/cxl/list/?series=758023): awaiting merge
   * [CDAT Parsing](https://patchwork.kernel.org/project/cxl/list/?series=757264): awaiting merge
 * Finish Type2 enabling
