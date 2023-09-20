@@ -25,6 +25,13 @@ OPTIONS
 -------
 include::bus-option.txt[]
 
+-f::
+--force::
+	Attempt to offline any memory that has been hot-added into the system
+	via the CXL region before disabling the region. This won't be attempted
+	if the memory was not added as 'movable', and may still fail even if it
+	was movable.
+
 include::decoder-option.txt[]
 
 include::debug-option.txt[]
