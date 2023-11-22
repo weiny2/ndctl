@@ -275,4 +275,6 @@ global:
 	cxl_cmd_alert_config_set_valid_alert_actions;
 	cxl_cmd_alert_config_set_enable_alert_actions;
 	cxl_cmd_new_set_alert_config;
+	cxl_memdev_trigger_poison_list;
+	cxl_region_trigger_poison_list;
 } LIBCXL_6;
