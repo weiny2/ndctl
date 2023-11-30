@@ -278,3 +278,8 @@ global:
 	cxl_memdev_trigger_poison_list;
 	cxl_region_trigger_poison_list;
 } LIBCXL_6;
+
+LIBCXL_8 {
+global:
+	cxl_memdev_wait_sanitize;
+} LIBCXL_7;
