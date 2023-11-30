@@ -850,7 +850,7 @@ static int disable_region(struct cxl_region *region)
 	daxctl_dev_foreach(dax_region, dev) {
 		mem = daxctl_dev_get_memory(dev);
 		if (!mem)
-			return -ENXIO;
+			continue;
 
 		/*
 		 * If memory is still online and user wants to force it, attempt
