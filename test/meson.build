@@ -159,6 +159,7 @@ cxl_update_firmware = find_program('cxl-update-firmware.sh')
 cxl_events = find_program('cxl-events.sh')
 cxl_poison = find_program('cxl-poison.sh')
 cxl_sanitize = find_program('cxl-sanitize.sh')
+cxl_destroy_region = find_program('cxl-destroy-region.sh')
 
 tests = [
   [ 'libndctl',               libndctl,		  'ndctl' ],
@@ -190,6 +191,7 @@ tests = [
   [ 'cxl-events.sh',          cxl_events,         'cxl'   ],
   [ 'cxl-poison.sh',          cxl_poison,         'cxl'   ],
   [ 'cxl-sanitize.sh',        cxl_sanitize,       'cxl'   ],
+  [ 'cxl-destroy-region.sh',  cxl_destroy_region, 'cxl'   ],
 ]
 
 if get_option('destructive').enabled()
