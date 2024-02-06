@@ -37,7 +37,7 @@ layout: page
 * [Stop requiring MSI/MSIx](https://lore.kernel.org/r/20240117-dont-fail-irq-v2-1-f33f26b0e365@intel.com): merged v6.8-rc2
 * [Fix x16 Region HPA allocation](http://lore.kernel.org/r/20240124091527.8469-1-caoqq@fujitsu.com): merged v6.8-rc2
 * [Fix sleeping lock in CPER handling](http://lore.kernel.org/r/20240202-cxl-cper-smatch-v1-1-7a4103c7f5a0@intel.com): pending next posting
-* [Fix duplicate messages in CPER handling](http://lore.kernel.org/r/20240131-cxl-cper-fixups-v1-0-335c85b1d77b@intel.com)
+* [Fix duplicate messages in CPER handling](http://lore.kernel.org/r/20240131-cxl-cper-fixups-v1-0-335c85b1d77b@intel.com): Ard to take through the EFI tree
 
 ## v6.9 Queue
 * [CXL QOS to NUMA](http://lore.kernel.org/r/170568485801.1008395.12244787918793980621.stgit@djiang5-mobl3): pending review
