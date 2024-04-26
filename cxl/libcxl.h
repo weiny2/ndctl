@@ -262,6 +262,11 @@ static inline bool cxl_decoder_mode_is_dc(enum cxl_decoder_mode mode)
 	return (mode >= CXL_DECODER_MODE_DC0 && mode <= CXL_DECODER_MODE_DC7);
 }
 
+static inline int cxl_decoder_dc_mode_to_index(enum cxl_decoder_mode mode)
+{
+	return mode - CXL_DECODER_MODE_DC0;
+}
+
 enum cxl_decoder_mode cxl_decoder_get_mode(struct cxl_decoder *decoder);
 int cxl_decoder_set_mode(struct cxl_decoder *decoder,
 			 enum cxl_decoder_mode mode);
