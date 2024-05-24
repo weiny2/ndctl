@@ -514,6 +514,16 @@ destroy_region ${region}
 check_not_region ${region}
 
 
+# create 2 regions in the same DC partition
+# reg_size=$(($dcsize / 2))
+# region=$(create_dcd_region ${mem} ${decoder} ${reg_size})
+# region2=$(create_dcd_region ${mem} ${decoder} ${reg_size})
+# check_region ${region}
+# check_region ${region2}
+# destroy_region($region2)
+# destroy_region($region)
+
+
 # Test event reporting
 # results expected
 num_dcd_events_expected=2
