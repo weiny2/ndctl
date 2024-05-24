@@ -43,11 +43,11 @@ dcsize=""
 base_ext_dpa=0x80000000
 base_ext_length=0x4000000
 
-# pre existing extent base + 256M, 64M length
+# pre existing extent base + 128M, 64M length
 pre_ext_dpa=0x88000000
 pre_ext_length=0x4000000
 
-# pre2 existing extent base + 512M, 64M length
+# pre2 existing extent base + 256M, 64M length
 pre2_ext_dpa=0x90000000
 pre2_ext_length=0x4000000
 
@@ -60,12 +60,17 @@ create_dcd_region()
 {
 	mem="$1"
 	decoder="$2"
+	reg_size_string=""
 	if [ "$3" != "" ]; then
-		reg_size_str="-s $3"
+		reg_size_string="-s $3"
+	fi
+	dcd_partition="dc0"
+	if [ "$4" != "" ]; then
+		dcd_partition="$4"
 	fi
 
 	# create region
-	region=$($CXL create-region -t dc0 -d "$decoder" -m "$mem" ${reg_size_string} | jq -r ".region")
+	region=$($CXL create-region -t ${dcd_partition} -d "$decoder" -m "$mem" ${reg_size_string} | jq -r ".region")
 
 	if [[ ! $region ]]; then
 		echo "create-region failed for $decoder / $mem"
@@ -78,10 +83,17 @@ create_dcd_region()
 check_region()
 {
 	search=$1
-	result=$($CXL list -r "$search" | jq -r ".[].region")
+	region_size=$2
 
+	result=$($CXL list -r "$search" | jq -r ".[].region")
 	if [ "$result" != "$search" ]; then
 		echo "check region failed to find $search"
+		err "$LINENO"
+	fi
+
+	result=$($CXL list -r "$search" | jq -r ".[].size")
+	if [ "$result" != "$region_size" ]; then
+		echo "check region failed invalid size $result != $region_size"
 		err "$LINENO"
 	fi
 }
@@ -234,7 +246,7 @@ echo ""
 echo "Test: pre-existing extent"
 echo ""
 region=$(create_dcd_region ${mem} ${decoder})
-check_region ${region}
+check_region ${region} ${dcsize}
 # should be a pre-created extent
 check_extent_cnt ${region} 2
 
@@ -374,7 +386,7 @@ echo ""
 echo "Test: Destroy region with extents and dax devices"
 echo ""
 region=$(create_dcd_region ${mem} ${decoder})
-check_region ${region}
+check_region ${region} ${dcsize}
 check_extent_cnt ${region} 0
 inject_extent ${device} $pre_ext_dpa $pre_ext_length $test_tag
 
@@ -394,7 +406,7 @@ echo ""
 echo "Test: Fail sparse dax dev creation without space"
 echo ""
 region=$(create_dcd_region ${mem} ${decoder})
-check_region ${region}
+check_region ${region} ${dcsize}
 inject_extent ${device} $pre_ext_dpa $pre_ext_length $test_tag
 
 # | 2G non- |      DC region                                        |
@@ -439,7 +451,7 @@ echo ""
 echo "Test: Resize sparse dax device across extents"
 echo ""
 region=$(create_dcd_region ${mem} ${decoder})
-check_region ${region}
+check_region ${region} ${dcsize}
 inject_extent ${device} $pre_ext_dpa $pre_ext_length $test_tag
 inject_extent ${device} $base_ext_dpa $base_ext_length $test_tag
 
@@ -488,7 +500,7 @@ echo "Test: Rejecting overlapping extents"
 echo ""
 
 region=$(create_dcd_region ${mem} ${decoder})
-check_region ${region}
+check_region ${region} ${dcsize}
 inject_extent ${device} $pre_ext_dpa $pre_ext_length $test_tag
 
 # | 2G non- |      DC region                                        |
@@ -512,6 +524,20 @@ inject_extent ${device} $partial_ext_dpa $partial_ext_length $test_tag
 check_extent_cnt ${region} 1
 destroy_region ${region}
 check_not_region ${region}
+
+
+echo ""
+echo "Test: create 2 regions in the same DC partition"
+echo ""
+region_size=$(($dcsize / 2))
+region=$(create_dcd_region ${mem} ${decoder} ${region_size} dc1)
+check_region ${region} ${region_size}
+
+region_two=$(create_dcd_region ${mem} ${decoder} ${region_size} dc1)
+check_region ${region_two} ${region_size}
+
+destroy_region ${region_two}
+destroy_region ${region}
 
 
 # Test event reporting
