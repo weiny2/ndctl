@@ -284,3 +284,11 @@ global:
 	cxl_memdev_get_ram_qos_class;
 	cxl_region_qos_class_mismatch;
 } LIBCXL_6;
+
+LIBCXL_8 {
+global:
+	cxl_extent_get_first;
+	cxl_extent_get_next;
+	cxl_extent_get_offset;
+	cxl_extent_get_length;
+} LIBCXL_7;

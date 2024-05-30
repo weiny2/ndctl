@@ -162,6 +162,7 @@ struct cxl_region {
 	struct cxl_decoder *decoder;
 	struct list_node list;
 	int mappings_init;
+	int extents_init;
 	struct cxl_ctx *ctx;
 	void *dev_buf;
 	size_t buf_len;
@@ -177,12 +178,20 @@ struct cxl_region {
 	struct daxctl_region *dax_region;
 	struct kmod_module *module;
 	struct list_head mappings;
+	struct list_head extents;
 };
 
 struct cxl_memdev_mapping {
 	struct cxl_region *region;
 	struct cxl_decoder *decoder;
 	unsigned int position;
+	struct list_node list;
+};
+
+struct cxl_region_extent {
+	struct cxl_region *region;
+	u64 offset;
+	u64 length;
 	struct list_node list;
 };
 
