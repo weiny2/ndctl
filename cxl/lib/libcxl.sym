@@ -295,4 +295,9 @@ global:
 	cxl_memdev_get_dc_size;
 	cxl_decoder_is_dc_capable;
 	cxl_decoder_create_dc_region;
+	cxl_extent_get_first;
+	cxl_extent_get_next;
+	cxl_extent_get_offset;
+	cxl_extent_get_length;
+	cxl_extent_get_tag;
 } LIBECXL_8;
