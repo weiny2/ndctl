@@ -411,6 +411,10 @@ OPTIONS
 }
 ----
 
+-N::
+--extents::
+	Extend Dynamic Capacity region listings extent information.
+
 -r::
 --region::
 	Specify CXL region device name(s), or device id(s), to filter the listing.
