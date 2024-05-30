@@ -289,4 +289,9 @@ global:
 LIBCXL_8 {
 global:
 	cxl_region_get_region_mode;
+	cxl_extent_get_first;
+	cxl_extent_get_next;
+	cxl_extent_get_offset;
+	cxl_extent_get_length;
+	cxl_extent_get_tag;
 } LIBCXL_7;
