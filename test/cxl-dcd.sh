@@ -39,16 +39,21 @@ test_tag=dc-test-tag
 
 dcsize=""
 
+base_dpa=0x80000000
+
 # base extent at dpa 2G - 64M long
-base_ext_dpa=0x80000000
+base_ext_offset=0x0
+base_ext_dpa=$(($base_dpa + $base_ext_offset))
 base_ext_length=0x4000000
 
 # pre existing extent base + 128M, 64M length
-pre_ext_dpa=0x88000000
+pre_ext_offset=0x8000000
+pre_ext_dpa=$(($base_dpa + $pre_ext_offset))
 pre_ext_length=0x4000000
 
 # pre2 existing extent base + 256M, 64M length
-pre2_ext_dpa=0x90000000
+pre2_ext_offset=0x10000000
+pre2_ext_dpa=$(($base_dpa + $pre2_ext_offset))
 pre2_ext_length=0x4000000
 
 mem=""
@@ -204,13 +209,27 @@ check_not_dax_dev()
 	fi
 }
 
+check_extent()
+{
+	region=$1
+	offset=$(($2))
+	length=$(($3))
+
+	result=$($CXL list -r "$region" -N | jq -r ".[].extents[] | select(.offset == ${offset}) | .length")
+	if [[ $result != $length ]]; then
+		echo "FAIL region $1 could not find extent @ $offset ($length)"
+		err "$LINENO"
+	fi
+}
+
 check_extent_cnt()
 {
-	reg=$1
-	expected=$2
-	cnt=$(ls -la /sys/bus/cxl/devices/${reg}/dax_${reg}/extent*/uevent | wc -l)
-	if [ "$cnt" -ne "$expected" ]; then
-		echo "FAIL found $cnt extents; expected $expected"
+	region=$1
+	count=$(($2))
+
+	result=$($CXL list -r $region -N | jq -r '.[].extents[].offset' | wc -l)
+	if [[ $result != $count ]]; then
+		echo "FAIL region $1: found wrong number of extents $result; expect $count"
 		err "$LINENO"
 	fi
 }
@@ -247,8 +266,10 @@ echo "Test: pre-existing extent"
 echo ""
 region=$(create_dcd_region ${mem} ${decoder})
 check_region ${region} ${dcsize}
-# should be a pre-created extent
-check_extent_cnt ${region} 2
+# should contain pre-created extents
+check_extent ${region} ${pre_ext_offset} ${pre_ext_length}
+check_extent ${region} ${pre2_ext_offset} ${pre2_ext_length}
+
 
 # | 2G non- |      DC region                                        |
 # |  DC cap |                                                       |
@@ -281,7 +302,9 @@ echo ""
 echo "Test: Create dax device spanning 2 extents"
 echo ""
 inject_extent ${device} $pre_ext_dpa $pre_ext_length $test_tag
+check_extent ${region} ${pre_ext_offset} ${pre_ext_length}
 inject_extent ${device} $base_ext_dpa $base_ext_length $test_tag
+check_extent ${region} ${base_ext_offset} ${base_ext_length}
 
 # | 2G non- |      DC region                                        |
 # |  DC cap |                                                       |
