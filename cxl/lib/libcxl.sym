@@ -282,3 +282,8 @@ global:
 	cxl_region_qos_class_mismatch;
 	cxl_port_decoders_committed;
 } LIBCXL_6;
+
+LIBCXL_8 {
+global:
+	cxl_region_get_region_mode;
+} LIBCXL_7;
