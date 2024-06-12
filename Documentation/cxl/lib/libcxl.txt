@@ -553,11 +553,20 @@ struct cxl_region *cxl_region_get_next(struct cxl_region *region);
 
 ===== REGION: Attributes
 ----
+enum cxl_region_mode {
+	CXL_REGION_MODE_NONE = CXL_DECODER_MODE_NONE,
+	CXL_REGION_MODE_MIXED = CXL_DECODER_MODE_MIXED,
+	CXL_REGION_MODE_PMEM = CXL_DECODER_MODE_PMEM,
+	CXL_REGION_MODE_RAM = CXL_DECODER_MODE_RAM,
+};
+const char *cxl_region_mode_name(enum cxl_region_mode mode);
+enum cxl_region_mode cxl_region_mode_from_ident(const char *ident);
+enum cxl_region_mode cxl_region_get_region_mode(struct cxl_region *region);
+
 int cxl_region_get_id(struct cxl_region *region);
 const char *cxl_region_get_devname(struct cxl_region *region);
 void cxl_region_get_uuid(struct cxl_region *region, uuid_t uu);
 unsigned long long cxl_region_get_size(struct cxl_region *region);
-enum cxl_decoder_mode cxl_region_get_mode(struct cxl_region *region);
 unsigned long long cxl_region_get_resource(struct cxl_region *region);
 unsigned int cxl_region_get_interleave_ways(struct cxl_region *region);
 unsigned int cxl_region_get_interleave_granularity(struct cxl_region *region);
@@ -576,8 +585,12 @@ int cxl_region_clear_all_targets(struct cxl_region *region);
 int cxl_region_decode_commit(struct cxl_region *region);
 int cxl_region_decode_reset(struct cxl_region *region);
 struct daxctl_region *cxl_region_get_daxctl_region(struct cxl_region *region);
-----
 
+DEPRECATED:
+
+enum cxl_decoder_mode cxl_region_get_mode(struct cxl_region *region);
+
+----
 A region's resource attribute is the Host Physical Address at which the region's
 address space starts. The region's address space is a subset of the parent root
 decoder's address space.
@@ -600,6 +613,9 @@ where its properties can be interrogated by ndctl, or the DAX subsystem
 where its properties can be interrogated by daxctl. The helper
 cxl_region_get_daxctl_region() returns an 'struct daxctl_region *' that
 can be used with other libdaxctl APIs.
+
+Regions now have a mode distinct from decoders.  cxl_region_get_mode() is
+deprecated in favor of cxl_region_get_region_mode().
 
 include::../../copyright.txt[]
 
