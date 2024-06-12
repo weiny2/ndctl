@@ -431,10 +431,10 @@ CXL_EXPORT bool cxl_region_qos_class_mismatch(struct cxl_region *region)
 		if (!memdev)
 			continue;
 
-		if (region->mode == CXL_DECODER_MODE_RAM) {
+		if (region->mode == CXL_REGION_MODE_RAM) {
 			if (root_decoder->qos_class != memdev->ram_qos_class)
 				return true;
-		} else if (region->mode == CXL_DECODER_MODE_PMEM) {
+		} else if (region->mode == CXL_REGION_MODE_PMEM) {
 			if (root_decoder->qos_class != memdev->pmem_qos_class)
 				return true;
 		}
@@ -619,9 +619,9 @@ static void *add_cxl_region(void *parent, int id, const char *cxlregion_base)
 
 	sprintf(path, "%s/mode", cxlregion_base);
 	if (sysfs_read_attr(ctx, path, buf) < 0)
-		region->mode = CXL_DECODER_MODE_NONE;
+		region->mode = CXL_REGION_MODE_NONE;
 	else
-		region->mode = cxl_decoder_mode_from_ident(buf);
+		region->mode = cxl_region_mode_from_ident(buf);
 
 	sprintf(path, "%s/modalias", cxlregion_base);
 	if (sysfs_read_attr(ctx, path, buf) == 0)
@@ -748,9 +748,14 @@ CXL_EXPORT unsigned long long cxl_region_get_resource(struct cxl_region *region)
 	return region->start;
 }
 
-CXL_EXPORT enum cxl_decoder_mode cxl_region_get_mode(struct cxl_region *region)
+CXL_EXPORT enum cxl_region_mode cxl_region_get_region_mode(struct cxl_region *region)
 {
 	return region->mode;
+}
+
+CXL_EXPORT enum cxl_decoder_mode cxl_region_get_mode(struct cxl_region *region)
+{
+	return (enum cxl_decoder_mode)cxl_region_get_region_mode(region);
 }
 
 CXL_EXPORT unsigned int
@@ -2700,7 +2705,7 @@ cxl_decoder_get_region(struct cxl_decoder *decoder)
 }
 
 static struct cxl_region *cxl_decoder_create_region(struct cxl_decoder *decoder,
-						    enum cxl_decoder_mode mode)
+						    enum cxl_region_mode mode)
 {
 	struct cxl_ctx *ctx = cxl_decoder_get_ctx(decoder);
 	char *path = decoder->dev_buf;
@@ -2708,9 +2713,9 @@ static struct cxl_region *cxl_decoder_create_region(struct cxl_decoder *decoder,
 	struct cxl_region *region;
 	int rc;
 
-	if (mode == CXL_DECODER_MODE_PMEM)
+	if (mode == CXL_REGION_MODE_PMEM)
 		sprintf(path, "%s/create_pmem_region", decoder->dev_path);
-	else if (mode == CXL_DECODER_MODE_RAM)
+	else if (mode == CXL_REGION_MODE_RAM)
 		sprintf(path, "%s/create_ram_region", decoder->dev_path);
 
 	rc = sysfs_read_attr(ctx, path, buf);
@@ -2754,13 +2759,13 @@ static struct cxl_region *cxl_decoder_create_region(struct cxl_decoder *decoder,
 CXL_EXPORT struct cxl_region *
 cxl_decoder_create_pmem_region(struct cxl_decoder *decoder)
 {
-	return cxl_decoder_create_region(decoder, CXL_DECODER_MODE_PMEM);
+	return cxl_decoder_create_region(decoder, CXL_REGION_MODE_PMEM);
 }
 
 CXL_EXPORT struct cxl_region *
 cxl_decoder_create_ram_region(struct cxl_decoder *decoder)
 {
-	return cxl_decoder_create_region(decoder, CXL_DECODER_MODE_RAM);
+	return cxl_decoder_create_region(decoder, CXL_REGION_MODE_RAM);
 }
 
 CXL_EXPORT int cxl_decoder_get_nr_targets(struct cxl_decoder *decoder)
