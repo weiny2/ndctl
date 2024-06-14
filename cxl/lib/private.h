@@ -188,10 +188,12 @@ struct cxl_memdev_mapping {
 	struct list_node list;
 };
 
+#define CXL_REGION_EXTENT_TAG 0x10
 struct cxl_region_extent {
 	struct cxl_region *region;
 	u64 offset;
 	u64 length;
+	char tag[CXL_REGION_EXTENT_TAG];
 	struct list_node list;
 };
 

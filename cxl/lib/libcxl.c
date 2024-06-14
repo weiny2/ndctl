@@ -1185,6 +1185,7 @@ static void cxl_extents_init(struct cxl_region *region)
 	struct cxl_ctx *ctx = cxl_region_get_ctx(region);
 	char *extent_path, *dax_region_path;
 	struct dirent *de;
+	char *tag = NULL;
 	DIR *dir = NULL;
 
 	if (region->extents_init)
@@ -1255,6 +1256,11 @@ static void cxl_extents_init(struct cxl_region *region)
 			continue;
 		}
 
+		sprintf(extent_path, "%s/extent%d.%d/tag",
+			dax_region_path, region_id, id);
+		if (sysfs_read_attr(ctx, extent_path, buf) == 0)
+			tag = buf;
+
 		extent = calloc(1, sizeof(*extent));
 		if (!extent) {
 			err(ctx, "%s extent%d.%d: allocation failure\n",
@@ -1265,6 +1271,8 @@ static void cxl_extents_init(struct cxl_region *region)
 		extent->region = region;
 		extent->offset = offset;
 		extent->length = length;
+		if (tag)
+			memcpy(extent->tag, tag, CXL_REGION_EXTENT_TAG);
 		list_node_init(&extent->list);
 		list_add(&region->extents, &extent->list);
 	}
