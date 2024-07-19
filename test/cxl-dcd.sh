@@ -75,14 +75,14 @@ create_dcd_region()
 	fi
 
 	# create region
-	region=$($CXL create-region -t ${dcd_partition} -d "$decoder" -m "$mem" ${reg_size_string} | jq -r ".region")
+	rc=$($CXL create-region -t ${dcd_partition} -d "$decoder" -m "$mem" ${reg_size_string} | jq -r ".region")
 
-	if [[ ! $region ]]; then
+	if [[ ! $rc ]]; then
 		echo "create-region failed for $decoder / $mem"
 		err "$LINENO"
 	fi
 
-	echo ${region}
+	echo ${rc}
 }
 
 check_region()
@@ -560,7 +560,9 @@ region_two=$(create_dcd_region ${mem} ${decoder} ${region_size} dc1)
 check_region ${region_two} ${region_size}
 
 destroy_region ${region_two}
+check_not_region ${region_two}
 destroy_region ${region}
+check_not_region ${region}
 
 
 # Test event reporting
