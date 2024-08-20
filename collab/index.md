@@ -15,6 +15,8 @@ layout: page
 
 # August 2024
 * Opens
+  - Next meeting is at plumbers!
+    - Move 1 week later to recap
 
 * QEMU
 * v6.11 fixes
@@ -22,6 +24,15 @@ layout: page
 * v6.12+
 
 ## QEMU
+  - not much; many things queued and landed last merge window
+  - still outstanding
+    - generic ports
+    - Controlling link width/speed
+    - Error injection (upstream is driving with non-cxl errors)
+      More generic now - v8 posted on main qemu list
+      https://lore.kernel.org/qemu-devel/cover.1723793768.git.mchehab+huawei@kernel.org/
+      CXL will be rebased on the common stuff once it settles
+    
 
 ## cxl-cli / user tools
 * ndctl v80 plans to include:
@@ -47,18 +58,32 @@ layout: page
 * Address translation for HDM decoding
   - Pending v3 from Robert
 * cxl/region: Remove soft reserve resource at region construction
+  - Waiting on next version?
 * acpi/ghes, cper, cxl: Trace FW-First CXL Protocol Errors
   - Waiting on next rev from Smita. No activity since May. Is this still happening?  
 * DCD: Add support for Dynamic Capacity Devices (DCD)
   - v3 is out, please review
+  - really need to associate a dax device to tag
+    - restrict default allocation to no-tag
+      - need this for v4
+  - need reference of dax device back to the tag
+
 
 # 6.12+
 * Add RAS support for CXL root ports, CXL downstream switch ports, and CXL upstream switch ports
   * Terry, new updates?
+    - working and hoping to be sending it this week or next
   * Fan is testing
 * Scrub Subsystem via EDAC
   * v11 posted
   * Shiju/Jonathan, new updates?
+  * PPR support now
+    - Review for PPR is needed
+    - must be done via DPA on a device which has not onlined (no HPA)
+    - CXL can do same as poison
+  * More than scrub now
+  * needs to be a kernel driver to check the errors offline
+  * may at least be able to upstream bits of it
 * Extended-linear memory-side-cache HMAT Proposal
   * Approved?
   * ACPICA pull request merged for new HMAT definition
@@ -67,10 +92,34 @@ layout: page
   * awaiting a user, paused
 * CXL PMU support for switches
   * Jonathan, updates?
+  * blackhole...  ;-)
+  * need a test platform
+  * will need help with testing eventually
 * cxl: avoid duplicating report from MCE & device
   - Nothing new since last meeting
 * FWCTL CXL support
   - Awaiting v2 and address Jason and Jonathan's comments
+  - worth doing before plumbers?
+    - probably won't get to it anyhow
+  - RFC mainly to show CXL interest
+
+
+RFC (discussion document) out for application use of DCD (ie VMs)
+  - has to work in VMs
+  - ACPI memory hot plug...  ick
+  - virtio-mem?
+  - CXL type 3 (restricted device, virtual DCD device)
+    - would need 1 HDM locked decoder
+    - lots of work
+  - brand shiny new thingy...
+    - DAX devices into VMs
+
+
+Assuming disaggregated memory succeeds
+Tagging memory is not just a CXL thing
+  - need a namespace to divy up memory to VMs
+  - famfs would have long term memory devices
+
 
 
 # July 2024
