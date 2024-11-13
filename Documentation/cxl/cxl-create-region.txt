@@ -75,8 +75,9 @@ include::bus-option.txt[]
 
 -t::
 --type=::
-	Specify the region type - 'pmem' or 'ram'. Default to root decoder
-	capability, and if that is ambiguous, default to 'pmem'.
+	Specify the region type - 'pmem', 'ram', or 'dc'.  Default to root
+	decoder capability including the first of any DC partition found.  If
+	the decoder capability is ambiguous, default to 'pmem'.
 
 -U::
 --uuid=::
@@ -104,6 +105,12 @@ include::bus-option.txt[]
 	The root decoder that the region should be created under. If not
 	supplied, the first cross-host bridge (if available), decoder that
 	supports the largest interleave will be chosen.
+
+-M::
+--decoder-mode=::
+	For a 'dc' region type, specify the dynamic capacity partition to be
+	used on each device, 'dcX' [where X is 0-7].  Ignored for region type
+	of 'ram' or 'pmem'.
 
 -Q::
 --enforce-qos::
