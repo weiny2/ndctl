@@ -49,7 +49,8 @@ struct parsed_params {
 	int argc;
 	const char **argv;
 	struct cxl_decoder *root_decoder;
-	enum cxl_decoder_mode mode;
+	enum cxl_decoder_mode decoder_mode;
+	enum cxl_region_mode region_mode;
 	bool enforce_qos;
 };
 
@@ -301,19 +302,28 @@ static int parse_create_options(struct cxl_ctx *ctx, int count,
 		return -ENXIO;
 	p->num_memdevs = json_object_array_length(p->memdevs);
 
+	p->region_mode = CXL_REGION_MODE_NONE;
 	if (param.type) {
-		p->mode = cxl_decoder_mode_from_ident(param.type);
-		if (p->mode == CXL_DECODER_MODE_RAM && param.uuid) {
+		p->region_mode = cxl_region_mode_from_ident(param.type);
+		if (p->region_mode == CXL_REGION_MODE_RAM && param.uuid) {
 			log_err(&rl,
 				"can't set UUID for ram / volatile regions");
 			goto err;
 		}
-		if (p->mode == CXL_DECODER_MODE_NONE) {
+		if (p->region_mode == CXL_REGION_MODE_NONE) {
 			log_err(&rl, "unsupported type: %s\n", param.type);
 			goto err;
 		}
-	} else {
-		p->mode = CXL_DECODER_MODE_PMEM;
+	}
+
+	switch (p->region_mode) {
+	case CXL_REGION_MODE_RAM:
+		p->decoder_mode = CXL_DECODER_MODE_RAM;
+		break;
+	case CXL_REGION_MODE_PMEM:
+	default:
+		p->decoder_mode = CXL_DECODER_MODE_PMEM;
+		break;
 	}
 
 	if (param.size) {
@@ -410,7 +420,7 @@ static void collect_minsize(struct cxl_ctx *ctx, struct parsed_params *p)
 		struct cxl_memdev *memdev = json_object_get_userdata(jobj);
 		u64 size = 0;
 
-		switch(p->mode) {
+		switch(p->decoder_mode) {
 		case CXL_DECODER_MODE_RAM:
 			size = cxl_memdev_get_ram_size(memdev);
 			break;
@@ -446,7 +456,7 @@ static int create_region_validate_qos_class(struct parsed_params *p)
 			json_object_array_get_idx(p->memdevs, i);
 		struct cxl_memdev *memdev = json_object_get_userdata(jobj);
 
-		if (p->mode == CXL_DECODER_MODE_RAM)
+		if (p->decoder_mode == CXL_DECODER_MODE_RAM)
 			qos_class = cxl_memdev_get_ram_qos_class(memdev);
 		else
 			qos_class = cxl_memdev_get_pmem_qos_class(memdev);
@@ -475,7 +485,7 @@ static int validate_decoder(struct cxl_decoder *decoder,
 	const char *devname = cxl_decoder_get_devname(decoder);
 	int rc;
 
-	switch(p->mode) {
+	switch(p->decoder_mode) {
 	case CXL_DECODER_MODE_RAM:
 		if (!cxl_decoder_is_volatile_capable(decoder)) {
 			log_err(&rl, "%s is not volatile capable\n", devname);
@@ -512,10 +522,14 @@ static void set_type_from_decoder(struct cxl_ctx *ctx, struct parsed_params *p)
 	 * default to pmem if both types are set, otherwise the single
 	 * capability dominates.
 	 */
-	if (cxl_decoder_is_volatile_capable(p->root_decoder))
-		p->mode = CXL_DECODER_MODE_RAM;
-	if (cxl_decoder_is_pmem_capable(p->root_decoder))
-		p->mode = CXL_DECODER_MODE_PMEM;
+	if (cxl_decoder_is_volatile_capable(p->root_decoder)) {
+		p->decoder_mode = CXL_DECODER_MODE_RAM;
+		p->region_mode = CXL_REGION_MODE_RAM;
+	}
+	if (cxl_decoder_is_pmem_capable(p->root_decoder)) {
+		p->decoder_mode = CXL_DECODER_MODE_PMEM;
+		p->region_mode = CXL_REGION_MODE_PMEM;
+	}
 }
 
 static int create_region_validate_config(struct cxl_ctx *ctx,
@@ -685,14 +699,14 @@ static int create_region(struct cxl_ctx *ctx, int *count,
 	if (size > max_extent)
 		size = ALIGN_DOWN(max_extent, SZ_256M * p->ways);
 
-	if (p->mode == CXL_DECODER_MODE_PMEM) {
+	if (p->region_mode == CXL_REGION_MODE_PMEM) {
 		region = cxl_decoder_create_pmem_region(p->root_decoder);
 		if (!region) {
 			log_err(&rl, "failed to create region under %s\n",
 				param.root_decoder);
 			return -ENXIO;
 		}
-	} else if (p->mode == CXL_DECODER_MODE_RAM) {
+	} else if (p->region_mode == CXL_REGION_MODE_RAM) {
 		region = cxl_decoder_create_ram_region(p->root_decoder);
 		if (!region) {
 			log_err(&rl, "failed to create region under %s\n",
@@ -714,7 +728,7 @@ static int create_region(struct cxl_ctx *ctx, int *count,
 
 	try(cxl_region, set_interleave_granularity, region, granularity);
 	try(cxl_region, set_interleave_ways, region, p->ways);
-	if (p->mode == CXL_DECODER_MODE_PMEM) {
+	if (p->region_mode == CXL_REGION_MODE_PMEM) {
 		if (!param.uuid)
 			uuid_generate(p->uuid);
 		try(cxl_region, set_uuid, region, p->uuid);
@@ -732,14 +746,14 @@ static int create_region(struct cxl_ctx *ctx, int *count,
 			rc = -ENXIO;
 			goto out;
 		}
-		if (cxl_decoder_get_mode(ep_decoder) != p->mode) {
+		if (cxl_decoder_get_mode(ep_decoder) != p->decoder_mode) {
 			/*
 			 * The cxl_memdev_find_decoder() helper returns a free
 			 * decoder whose size has been checked for 0.
 			 * Thus it is safe to change the mode here if needed.
 			 */
 			try(cxl_decoder, set_dpa_size, ep_decoder, 0);
-			try(cxl_decoder, set_mode, ep_decoder, p->mode);
+			try(cxl_decoder, set_mode, ep_decoder, p->decoder_mode);
 		}
 		try(cxl_decoder, set_dpa_size, ep_decoder, size/p->ways);
 		rc = cxl_region_set_target(region, i, ep_decoder);
