@@ -754,12 +754,15 @@ err_free:
 	return jpoison;
 }
 
+#define DC_SIZE_NAME_LEN 64
 struct json_object *util_cxl_memdev_to_json(struct cxl_memdev *memdev,
 		unsigned long flags)
 {
 	const char *devname = cxl_memdev_get_devname(memdev);
+	char size_name[DC_SIZE_NAME_LEN];
 	struct json_object *jdev, *jobj;
 	unsigned long long serial, size;
+	enum cxl_decoder_mode mode;
 	const char *fw_version;
 	int numa_node;
 	int qos_class;
@@ -800,6 +803,16 @@ struct json_object *util_cxl_memdev_to_json(struct cxl_memdev *memdev,
 		}
 	}
 
+	for (mode = CXL_DECODER_MODE_DC0; mode <= CXL_DECODER_MODE_DC7; mode++) {
+		size = cxl_memdev_get_dc_size(memdev, mode);
+		if (!size)
+			continue;
+		jobj = util_json_object_size(size, flags);
+		if (!jobj)
+			continue;
+		sprintf(size_name, "%s_size", cxl_decoder_mode_name(mode));
+		json_object_object_add(jdev, size_name, jobj);
+	}
 	if (flags & UTIL_JSON_HEALTH) {
 		jobj = util_cxl_memdev_health_to_json(memdev, flags);
 		if (jobj)
@@ -948,12 +961,15 @@ struct json_object *util_cxl_bus_to_json(struct cxl_bus *bus,
 	return jbus;
 }
 
+#define DC_CAPABILITY_NAME_LEN 16
 struct json_object *util_cxl_decoder_to_json(struct cxl_decoder *decoder,
 					     unsigned long flags)
 {
 	const char *devname = cxl_decoder_get_devname(decoder);
 	struct cxl_port *port = cxl_decoder_get_port(decoder);
+	char dc_capable_name[DC_CAPABILITY_NAME_LEN];
 	struct json_object *jdecoder, *jobj;
+	enum cxl_decoder_mode mode;
 	struct cxl_region *region;
 	u64 val, size;
 
@@ -1013,7 +1029,7 @@ struct json_object *util_cxl_decoder_to_json(struct cxl_decoder *decoder,
 	}
 
 	if (cxl_port_is_endpoint(port)) {
-		enum cxl_decoder_mode mode = cxl_decoder_get_mode(decoder);
+		mode = cxl_decoder_get_mode(decoder);
 
 		size = cxl_decoder_get_dpa_size(decoder);
 		val = cxl_decoder_get_dpa_resource(decoder);
@@ -1058,6 +1074,15 @@ struct json_object *util_cxl_decoder_to_json(struct cxl_decoder *decoder,
 			if (jobj)
 				json_object_object_add(
 					jdecoder, "volatile_capable", jobj);
+		}
+		for (mode = CXL_DECODER_MODE_DC0; mode <= CXL_DECODER_MODE_DC7; mode++) {
+			if (!cxl_decoder_is_dc_capable(decoder, mode))
+				continue;
+			jobj = json_object_new_boolean(true);
+			if (!jobj)
+				continue;
+			sprintf(dc_capable_name, "%s_capable", cxl_decoder_mode_name(mode));
+			json_object_object_add(jdecoder, dc_capable_name, jobj);
 		}
 	}
 

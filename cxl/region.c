@@ -26,6 +26,7 @@ static struct region_params {
 	const char *uuid;
 	const char *root_decoder;
 	const char *region;
+	const char *decoder_mode;
 	int ways;
 	int granularity;
 	bool memdevs;
@@ -79,9 +80,11 @@ OPT_INTEGER('w', "ways", &param.ways, \
 OPT_INTEGER('g', "granularity", &param.granularity,  \
 	    "granularity of the interleave set"), \
 OPT_STRING('t', "type", &param.type, \
-	   "region type", "region type - 'pmem' or 'ram'"), \
+	   "region type", "region type - 'pmem', 'ram', or 'dc'"), \
 OPT_STRING('U', "uuid", &param.uuid, \
 	   "region uuid", "uuid for the new region (default: autogenerate)"), \
+OPT_STRING('M', "decoder-mode", &param.decoder_mode, "decoder mode", \
+	   "decoder mode for dc regions - 'dcX' [where X is 0-7]"), \
 OPT_BOOLEAN('m', "memdevs", &param.memdevs, \
 	    "non-option arguments are memdevs"), \
 OPT_BOOLEAN('u', "human", &param.human, "use human friendly number formats"), \
@@ -314,11 +317,18 @@ static int parse_create_options(struct cxl_ctx *ctx, int count,
 			log_err(&rl, "unsupported type: %s\n", param.type);
 			goto err;
 		}
+		if (p->region_mode == CXL_REGION_MODE_DC && !param.decoder_mode) {
+			log_err(&rl, "dc type requires a decoder mode\n");
+			goto err;
+		}
 	}
 
 	switch (p->region_mode) {
 	case CXL_REGION_MODE_RAM:
 		p->decoder_mode = CXL_DECODER_MODE_RAM;
+		break;
+	case CXL_REGION_MODE_DC:
+		p->decoder_mode = cxl_decoder_mode_from_ident(param.decoder_mode);
 		break;
 	case CXL_REGION_MODE_PMEM:
 	default:
@@ -427,6 +437,9 @@ static void collect_minsize(struct cxl_ctx *ctx, struct parsed_params *p)
 		case CXL_DECODER_MODE_PMEM:
 			size = cxl_memdev_get_pmem_size(memdev);
 			break;
+		case CXL_DECODER_MODE_DC0 ... CXL_DECODER_MODE_DC7:
+			size = cxl_memdev_get_dc_size(memdev, p->decoder_mode);
+			break;
 		default:
 			/* Shouldn't ever get here */ ;
 		}
@@ -498,6 +511,13 @@ static int validate_decoder(struct cxl_decoder *decoder,
 			return -EINVAL;
 		}
 		break;
+	case CXL_DECODER_MODE_DC0 ... CXL_DECODER_MODE_DC7:
+		if (!cxl_decoder_is_dc_capable(decoder, p->decoder_mode)) {
+			log_err(&rl, "%s is not %s capable\n", devname,
+				cxl_decoder_mode_name(p->decoder_mode));
+			return -EINVAL;
+		}
+		break;
 	default:
 		log_err(&rl, "unknown type: %s\n", param.type);
 		return -EINVAL;
@@ -514,9 +534,19 @@ static int validate_decoder(struct cxl_decoder *decoder,
 
 static void set_type_from_decoder(struct cxl_ctx *ctx, struct parsed_params *p)
 {
+	enum cxl_decoder_mode mode;
+
 	/* if param.type was explicitly specified, nothing to do here */
 	if (param.type)
 		return;
+
+	for (mode = CXL_DECODER_MODE_DC0; mode <= CXL_DECODER_MODE_DC7; mode++) {
+		if (cxl_decoder_is_dc_capable(p->root_decoder, mode)) {
+			p->decoder_mode = mode;
+			p->region_mode = CXL_REGION_MODE_DC;
+			break;
+		}
+	}
 
 	/*
 	 * default to pmem if both types are set, otherwise the single
@@ -708,6 +738,13 @@ static int create_region(struct cxl_ctx *ctx, int *count,
 		}
 	} else if (p->region_mode == CXL_REGION_MODE_RAM) {
 		region = cxl_decoder_create_ram_region(p->root_decoder);
+		if (!region) {
+			log_err(&rl, "failed to create region under %s\n",
+				param.root_decoder);
+			return -ENXIO;
+		}
+	} else if (p->region_mode == CXL_REGION_MODE_DC) {
+		region = cxl_decoder_create_dc_region(p->root_decoder);
 		if (!region) {
 			log_err(&rl, "failed to create region under %s\n",
 				param.root_decoder);
